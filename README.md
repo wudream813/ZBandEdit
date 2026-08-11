@@ -36,7 +36,7 @@ bandedit-x64 set pick 16     ← 鼠标点到计算器，按 F8，完成。毫�
 |---|---|---|
 | 0 | ZBID_DEFAULT | （保留） |
 | 1 | ZBID_DESKTOP | 所有普通应用窗口 |
-| 2 | ZBID_UIACCESS | UIAccess 程序（你的计算器默认就在这层） |
+| 2 | ZBID_UIACCESS | UIAccess 程序 |
 | 6 | ZBID_MOGO | 开始菜单等 shell 浮层 |
 | 14 | ZBID_GENUINE_WINDOWS | 正版验证提示层 |
 | 16 | ZBID_SYSTEM_TOOLS | 任务管理器"总在前面"层 |
