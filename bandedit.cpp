@@ -950,7 +950,7 @@ static bool EnsurePayloadResident(const std::wstring& dllArg, ShareBlock* sh) {
         std::vector<BYTE> dllBytes;
         if (dllArg.empty()) {
             dllBytes.assign(kEmbeddedPayload, kEmbeddedPayload + kEmbeddedPayloadLen);
-            out(L"client v6.2 · payload 内嵌 v6.1（手动映射：不落盘、不进模块链表）\n");
+            out(L"client v6.3 · payload 内嵌 v6.1（手动映射：不落盘、不进模块链表）\n");
         } else {
             if (!ReadWholeFile(dllArg, dllBytes)) {
                 outf(L"❌ 无法读取 --dll 指定的文件: %s\n", dllArg.c_str());
@@ -1161,6 +1161,9 @@ static int CmdSet(const std::wstring& targetArg, DWORD band, bool manual, bool d
         colorPush(kRed);
         outf(L"\n❌ explorer 上下文调用被拒绝: err=%d\n", sh->error);
         colorPop();
+        if (sh->error == 87)
+            out(L"    err=87 = 参数无效。常见原因：ZBID 0 保留不可设（用 1 还原到桌面层）\n"
+                L"    或 hwnd/insertAfter 组合非法。Band 本身可设的范围是 1~18。\n");
     } else if (st == 6) {
         colorPush(kRed);
         if (sh->error == 1001)
@@ -1229,7 +1232,7 @@ static void Usage() {
         L"    bandedit pick                           鼠标取窗(悬停预览, F8 捕获, Esc 退出)\n"
         L"    bandedit band <hwnd|pick>               查询窗口的 Z-Band\n"
         L"  修改:\n"
-        L"    bandedit set <hwnd|pick|me> <zbid 0~18> [选项]\n"
+        L"    bandedit set <hwnd|pick|me> <zbid 1~18> [选项]\n"
         L"        默认 direct 直调: 静默扫描 explorer 内存取 IAM key 后调 SetWindowBand,\n"
         L"                        零按键/零焦点变化; key 缓存后毫秒级完成\n"
         L"                        （改 Band 不动置顶位：系统顺带的 WS_EX_TOPMOST 会自动回滚）\n"
@@ -1285,7 +1288,7 @@ static int CmdLoad(ShareBlock* sh) {
     out(L"⚠️ 将注入 explorer.exe，仅限自己机器研究用途。\n\n");
     if (!EnsurePayloadResident(L"", sh)) return 1;
     out(L"\n✅ hook 已装载。之后随时：\n"
-        L"   bandedit-x64 set <hwnd|pick|me> <zbid 0~18>   （默认 direct 直调，零按键/零焦点）\n"
+        L"   bandedit-x64 set <hwnd|pick|me> <zbid 1~18>   （默认 direct 直调，零按键/零焦点）\n"
         L"   bandedit-x64 scan / list / pick / band ...    （查询类随时可用，无需注入）\n"
         L"   bandedit-x64 unload                           （卸载并自裁释放）\n"
         L"   提示：装载后首次 set 会自动静默扫描 IAM key（约 1~2 秒），之后毫秒级。\n");
@@ -1385,9 +1388,16 @@ int wmain(int argc, wchar_t** argv) {
     }
     if (targetArg.empty() || bandArg.empty()) { Usage(); CloseShareCtx(c); return 1; }
     DWORD band = wcstoul(bandArg.c_str(), nullptr, 0);
-    if (band > 18) { out(L"zbid 应在 0~18 之间\n"); CloseShareCtx(c); return 1; }
+    if (band > 18) { out(L"zbid 应在 1~18 之间\n"); CloseShareCtx(c); return 1; }
+    if (band == 0) {   // v6.3：本地预拦截——内核 SetWindowBand 必拒（err=87），别白跑 explorer
+        out(L"ℹ️ ZBID 0 (ZBID_DEFAULT) 是\"未分配\"占位状态，不是真实存在的层，\n"
+            L"   内核 SetWindowBand 对它直接返回 err=87。可设范围是 1~18。\n"
+            L"   想把窗口还原回普通桌面层：bandedit-x64 set pick 1\n");
+        CloseShareCtx(c);
+        return 1;
+    }
 
-    out(L"\n==== BandEdit v6.2 —— set (借 explorer 调 SetWindowBand) ====\n");
+    out(L"\n==== BandEdit v6.3 —— set (借 explorer 调 SetWindowBand) ====\n");
     out(L"⚠️ 将注入/使用 explorer.exe，仅限自己机器研究用途。\n");
     if (g_debug) CrashBoxReport();   // 上次若抓到过异常，先把记录晒出来（--debug 专属）
     if (direct)
